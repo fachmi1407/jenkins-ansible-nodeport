@@ -1,0 +1,69 @@
+- name: Fetch kubeconfig from master
+  hosts: master
+  become: true
+  tasks:
+    - name: Ambil kubeconfig admin.conf dari master
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: /tmp/admin.conf
+        flat: true
+
+- name: Salin kubeconfig ke node2 user quadrant
+  hosts: node2
+  become: true
+  vars:
+    kubeconfig_path: /home/quadrant/.kube/config
+  tasks:
+    - name: Buat folder ~/.kube
+      file:
+        path: /home/quadrant/.kube
+        state: directory
+        owner: quadrant
+        group: quadrant
+        mode: '0700'
+
+    - name: Salin kubeconfig ke node2
+      copy:
+        src: /tmp/admin.conf
+        dest: "{{ kubeconfig_path }}"
+        owner: quadrant
+        group: quadrant
+        mode: '0600'
+
+- name: Install Jenkins in Kubernetes via Ansible on node2
+  hosts: k8s
+  become: false
+  vars:
+    kubeconfig_path: /home/quadrant/.kube/config
+  tasks:
+    - name: Ensure Jenkins namespace exists
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: jenkins
+      delegate_to: node2
+
+    - name: Create PVC for Jenkins
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition: "{{ lookup('template', 'files/jenkins-pvc.yaml.j2') | from_yaml }}"
+      delegate_to: node2
+
+    - name: Deploy Jenkins Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition: "{{ lookup('template', 'files/jenkins-deployment.yaml.j2') | from_yaml }}"
+      delegate_to: node2
+
+    - name: Deploy Jenkins NodePort service (for direct access)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition: "{{ lookup('template', 'files/jenkins-service-nodeport.yaml.j2') | from_yaml }}"
+      delegate_to: node2
