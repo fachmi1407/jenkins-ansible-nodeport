@@ -1,5 +1,5 @@
 [master]
-192.168.50.20 ansible_user=quadrant ansible_ssh_private_key_file=/home/fachmi/.ssh/id_rsa
+master ansible_host=192.168.50.20 ansible_user=quadrant ansible_ssh_private_key_file=/home/fachmi/.ssh/id_rsa
 
 [k8s]
-192.168.50.22 ansible_user=quadrant ansible_ssh_private_key_file=/home/fachmi/.ssh/id_rsa
+node2 ansible_host=192.168.50.22 ansible_user=quadrant ansible_ssh_private_key_file=/home/fachmi/.ssh/id_rsa
